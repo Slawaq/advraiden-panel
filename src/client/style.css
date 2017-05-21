@@ -1,0 +1,25 @@
+#app {
+    margin: 0 auto;
+    text-align: center;
+    height: 100px;
+    padding-top: 10px
+}
+
+.table {
+    text-align: left;
+}
+
+.table tr, .table td {
+    padding: 5px;
+}
+
+.td-count {
+    text-align: right;
+}
+
+#standalone {
+  transform: scale(0.8);
+}
+.popup_visible #standalone {
+  transform: scale(1);
+}

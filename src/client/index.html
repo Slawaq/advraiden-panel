@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style type="text/css">
+            body { width: 100%; margin: 0; float: none; }
+            body { background: white; }
+            body { color: #111; }
+            body { font-family: sans-serif; }
+            a:link { cursor: pointer; text-decoration: underline; color: #06c; }
+            p { font-size: 12pt; } 
+        </style>
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.2/knockout-debug.js"></script>
+        <!-- Include Required Prerequisites -->
+        <script type="text/javascript" src="//cdn.jsdelivr.net/jquery/1/jquery.min.js"></script>
+        <script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap/3/css/bootstrap.css" />
+        
+        <!-- Include Date Range Picker -->
+        <script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.js"></script>
+        <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.css" />
+
+        <!-- Loader -->
+        <script type="text/javascript" src="//cdn.jsdelivr.net/jquery.loadingoverlay/latest/loadingoverlay.min.js"></script>
+        <script type="text/javascript" src="//cdn.jsdelivr.net/jquery.loadingoverlay/latest/loadingoverlay_progress.min.js"></script>
+        <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+
+        <!-- Include jQuery Popup Overlay -->
+        <script src="https://cdn.rawgit.com/vast-engineering/jquery-popup-overlay/1.7.13/jquery.popupoverlay.js"></script>
+
+    </head>
+    <body>
+        <div id="app">
+            <div>
+            <h2>Stats</h2>
+            <span style="float:right">
+                <div id="reportrange" class="pull-right" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 100%">
+                    <i class="glyphicon glyphicon-calendar fa fa-calendar"></i>&nbsp;
+                    <span></span> <b class="caret"></b>
+                </div>
+            </span>
+            <div>
+            <table class="table">
+                <tr>
+                    <th width="500px">Name</th>
+                    <th width="100px" class="td-count">Clicks</th>
+                    <th width="100px" class="td-count">$ Spent</th>
+                </tr>
+                <tbody data-bind="foreach: camps">
+                <tr>
+                    <td>
+                        <div data-bind="text: name"></div>
+                        
+                        <!-- ko if: opened  -->
+                            <!-- ko if: openedType() === 'con' -->
+                                <input data-bind="click: hide" type="button" value="close" />
+                            <!-- /ko -->
+                            <!-- ko if: openedType() === 'sub' -->
+                                <input data-bind="click: hide" type="button" value="close" />                            
+                            <!-- /ko -->
+                        <!-- /ko -->
+                        
+                        <!-- ko ifnot: opened  -->
+                            <input data-bind="click: showCon" type="button" value="show COUNTRIES" />
+                            <input data-bind="click: showSub" type="button" value="show SUBIDS" />
+                        <!-- /ko -->
+                    </td>
+                    <td data-bind="text: total" class="td-count"></td>
+                    <td data-bind="text: spent" class="td-count"></td>
+                </tr>
+                <!-- ko if: opened  -->
+                <!-- ko if: openedType() === 'con' -->
+                <!-- ko foreach: countries -->
+                <tr>
+                    <td data-bind="text: name"></td>
+                    <td data-bind="text: total" class="td-count"></td>
+                    <td data-bind="text: spent" class="td-count"></td>
+                </tr>
+                <!-- /ko -->
+                <!-- /ko -->
+                <!-- ko if: openedType() === 'sub' -->
+                <!-- ko foreach: subids -->
+                <tr>
+                    <td data-bind="text: name"></td>
+                    <td data-bind="text: total" class="td-count"></td>
+                    <td data-bind="text: spent" class="td-count"></td>
+                </tr>
+                <!-- /ko -->
+                <!-- /ko -->
+                <!-- /ko -->
+                </tbody>
+            </table>
+        </div>
+        <div id="standalone" style="display: none; text-align: left;padding: 5px;">
+            <pre class="prettyprint">
+                <code data-bind="text: error"></code>
+            </pre>
+        </div>
+        <script type="text/javascript">
+            const vm = {
+                camps: ko.observableArray([]),
+                error: ko.observable(''),
+                start: ko.observable(),
+                end: ko.observable(),
+                load: (start, end) => {
+                    for(let c of vm.camps())
+                        c.hide()
+
+                    vm.start(start)
+                    vm.end(end)
+
+                    Promise.resolve(jQuery.ajax({
+                        method: 'POST', 
+                        url: '/api/all',
+                        dataType: 'json',
+                        data: JSON.stringify({ start, end }), 
+                        contentType:'application/json', 
+                    })).then(data => {
+                        vm.camps(data.map(createCamp))
+                    }).catch(err => {
+                        vm.error(`ERROR: ${err.status} | ${err.statusText}\r\n${err.responseText}\r\n\r\nplease, reload page`)
+                        $('#standalone').popup('show')
+                    })
+                }
+            }
+
+            let createCamp = x => {
+                return Object.assign(x, {
+                    opened: ko.observable(false),
+                    openedType: ko.observable(''),
+                    countries: ko.observableArray([]),
+                    subids: ko.observableArray([]),
+                    showCon: () => {
+                        Promise.resolve(jQuery.ajax({
+                            method: 'POST', 
+                            url: '/api/getCountries',
+                            dataType: 'json',
+                            data: JSON.stringify({ start: vm.start(), end: vm.end(), camp: x.name }), 
+                            contentType:'application/json', 
+                        })).then(data => {
+                            x.countries(data)
+                            x.opened(true)
+                            x.openedType('con')
+                        }).catch(err => {
+                            vm.error(`ERROR: ${err.status} | ${err.statusText}\r\n${err.responseText}\r\n\r\nplease, reload page`)
+                            $('#standalone').popup('show')
+                        })
+                    },
+                    showSub: () => {
+                        Promise.resolve(jQuery.ajax({
+                            method: 'POST', 
+                            url: '/api/getSubids',
+                            dataType: 'json',
+                            data: JSON.stringify({ start: vm.start(), end: vm.end(), camp: x.name }), 
+                            contentType:'application/json', 
+                        })).then(data => {
+                            x.subids(data)
+                            x.opened(true)
+                            x.openedType('sub')
+                        }).catch(err => {
+                            vm.error(`ERROR: ${err.status} | ${err.statusText}\r\n${err.responseText}\r\n\r\nplease, reload page`)
+                            $('#standalone').popup('show')
+                        })
+                    },
+                    hide: () => {
+                        x.opened(false)
+                        x.openedType('')
+                    }
+                })
+            }
+
+            ko.applyBindings(vm, document.getElementById("app"))
+   
+            $(function() {
+                $('#standalone').popup({
+                    escape: false,
+                    color: 'white',
+                    opacity: 1,
+                    transition: '0.3s',
+                    scrolllock: true
+                });
+                $(document).ajaxStart(function(){
+                    $.LoadingOverlay("show", {
+                        image       : "",
+                        fontawesome : "fa fa-spinner fa-spin"
+                    });
+                });
+                $(document).ajaxStop(function(){
+                    $.LoadingOverlay("hide");
+                });
+
+                var start = moment().utc().startOf('day');;
+                var end = moment().utc().endOf('day');
+
+                function cb(start, end) {
+                    $('#reportrange span').html(start.format('D MM YYYY HH:mm:ss Z') + ' - ' + end.format('D MM YYYY HH:mm:ss Z'));
+                    vm.load(start, end)
+                }
+
+                $('#reportrange').daterangepicker({
+                    locale: {
+                        format: 'D MM YYYY'
+                    },
+                    dateLimit: { days: 7 },
+                    startDate: start,
+                    endDate: end,
+                    ranges: {
+                    'Today': [moment().utc(), moment().utc()],
+                    'Yesterday': [moment().utc().subtract(1, 'days'), moment().utc().subtract(1, 'days')],
+                    'Last 7 Days': [moment().utc().subtract(6, 'days'), moment().utc()],
+                    'Last 30 Days': [moment().utc().subtract(29, 'days'), moment().utc()],
+                    'This Month': [moment().utc().startOf('month'), moment().utc().endOf('month')],
+                    'Last Month': [moment().utc().subtract(1, 'month').startOf('month'), moment().utc().subtract(1, 'month').endOf('month')]
+                    }
+                }, cb);
+
+                cb(start, end);
+            });
+        </script>
+    </body>
+</html>

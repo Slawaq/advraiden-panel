@@ -1,0 +1,16 @@
+{
+    "port": 4444,
+    "es": {
+        "host": "",
+        "httpAuth": ""
+    },
+    "logins": [
+      {
+        "login": "admin",
+        "pass": "secret, hehehehe",
+        "camps": [
+            "camp"
+        ]
+      }
+    ]
+}
