@@ -107,7 +107,9 @@ let getAll = (req, res) => {
       let aggs = stats.responses[0].aggregations.top.buckets
       let data = user.camps.map(x => {
         let aggDoc = aggs.find(a => a.key === x)
-        return { name: x, total: aggDoc.doc_count, spent: mathRound10(aggDoc.spent.value, -3) }
+        return aggDoc
+          ? { name: x, total: aggDoc.doc_count, spent: mathRound10(aggDoc.spent.value, -3) }
+          : { name: x, total: 0, spent: 0 }
       })
       res.end(JSON.stringify(data))
     })
