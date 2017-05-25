@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <title></title>
+        <link rel="icon" href="/favicon.png">
         <style type="text/css">
             body { width: 100%; margin: 0; float: none; }
             body { background: white; }
@@ -26,43 +28,52 @@
         <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
 
         <!-- Include jQuery Popup Overlay -->
-        <script src="https://cdn.rawgit.com/vast-engineering/jquery-popup-overlay/1.7.13/jquery.popupoverlay.js"></script>
+        <script type="text/javascript" src="https://cdn.rawgit.com/vast-engineering/jquery-popup-overlay/1.7.13/jquery.popupoverlay.js"></script>
 
+        <!-- Include Download CSV -->
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.3.2/papaparse.min.js"></script>
+        <script type="text/javascript" src="http://danml.com/js/download.js"></script>
+
+        <link rel="stylesheet" href="css/flag-icon.min.css" />
     </head>
     <body>
         <div id="app">
             <div>
-            <h2>Stats</h2>
-            <span style="float:right">
-                <div id="reportrange" class="pull-right" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 100%">
-                    <i class="glyphicon glyphicon-calendar fa fa-calendar"></i>&nbsp;
-                    <span></span> <b class="caret"></b>
-                </div>
-            </span>
+            <h2 data-bind="text: title"></h2>
+            <div id="reportrange" class="form-group form-control" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 420px; margin: 0 auto;margin-bottom: 10px;">
+                <i class="glyphicon glyphicon-calendar fa fa-calendar"></i>&nbsp;
+                <span></span><b class="caret"></b>
+            </div>
             <div>
-            <table class="table">
+            <table class="table table-striped" style="max-width: 800px;margin: 0 auto;">
                 <tr>
-                    <th width="500px">Name</th>
+                    <th width="500px">Campaigning</th>
                     <th width="100px" class="td-count">Clicks</th>
                     <th width="100px" class="td-count">$ Spent</th>
                 </tr>
                 <tbody data-bind="foreach: camps">
                 <tr>
                     <td>
-                        <div data-bind="text: name"></div>
+                        <h4 data-bind="text: name"></h4>
                         
                         <!-- ko if: opened  -->
                             <!-- ko if: openedType() === 'con' -->
-                                <input data-bind="click: hide" type="button" value="close" />
+                                <button class="btn btn-primary btn-xs" data-bind="click: downloadCon">
+                                    <span class="glyphicon glyphicon-save-file" title="download csv"></span>
+                                </button>
+                                <input data-bind="click: hide" type="button" class="btn btn-danger btn-xs" value="close" />
                             <!-- /ko -->
                             <!-- ko if: openedType() === 'sub' -->
-                                <input data-bind="click: hide" type="button" value="close" />                            
+                                <button class="btn btn-primary btn-xs" data-bind="click: downloadSub">
+                                    <span class="glyphicon glyphicon-save-file" title="download csv"></span>
+                                </button>
+                                <input data-bind="click: hide" type="button" class="btn btn-danger btn-xs" value="close" />                            
                             <!-- /ko -->
                         <!-- /ko -->
                         
                         <!-- ko ifnot: opened  -->
-                            <input data-bind="click: showCon" type="button" value="show COUNTRIES" />
-                            <input data-bind="click: showSub" type="button" value="show SUBIDS" />
+                            <input data-bind="click: showCon" type="button" class="btn btn-primary btn-xs" value="by countries" />
+                            <input data-bind="click: showSub" type="button" class="btn btn-primary btn-xs" value="by subids" />
                         <!-- /ko -->
                     </td>
                     <td data-bind="text: total" class="td-count"></td>
@@ -72,7 +83,13 @@
                 <!-- ko if: openedType() === 'con' -->
                 <!-- ko foreach: countries -->
                 <tr>
-                    <td data-bind="text: name"></td>
+                    <td>
+                        <button class="btn btn-primary btn-xs" data-bind="click: $parent.downloadConSubids.bind($parent, name)">
+                            <span class="glyphicon glyphicon-save-file" title="download csv"></span>
+                        </button>
+                        <span class="flag-icon flag-icon-squared" data-bind="css: 'flag-icon-' + name.toLowerCase()"></span>
+                        <span data-bind="text: name"></span>
+                    </td>
                     <td data-bind="text: total" class="td-count"></td>
                     <td data-bind="text: spent" class="td-count"></td>
                 </tr>
@@ -98,6 +115,7 @@
         </div>
         <script type="text/javascript">
             const vm = {
+                title: ko.observable(''),
                 camps: ko.observableArray([]),
                 error: ko.observable(''),
                 start: ko.observable(),
@@ -116,13 +134,16 @@
                         data: JSON.stringify({ start, end }), 
                         contentType:'application/json', 
                     })).then(data => {
-                        vm.camps(data.map(createCamp))
+                        vm.title(data.name)
+                        vm.camps(data.stats.map(createCamp))
                     }).catch(err => {
                         vm.error(`ERROR: ${err.status} | ${err.statusText}\r\n${err.responseText}\r\n\r\nplease, reload page`)
                         $('#standalone').popup('show')
                     })
                 }
             }
+
+            vm.title.subscribe(v => document.title = `${v} Panel`)
 
             let createCamp = x => {
                 return Object.assign(x, {
@@ -165,6 +186,29 @@
                     hide: () => {
                         x.opened(false)
                         x.openedType('')
+                    },
+                    downloadCon: () => {
+                        let csv = Papa.unparse(x.countries())
+                        download(csv, `${vm.title().toLowerCase()}_${x.name}_countries_report_${vm.start().format('DD_MM_YYYY_HH_mm_ss')}_to_${vm.end().format('DD_MM_YYYY_HH_mm_ss')}.csv`, 'text/csv')
+                    },
+                    downloadSub: () => {
+                        let csv = Papa.unparse(x.subids())
+                        download(csv, `${vm.title().toLowerCase()}_${x.name}_subids_report_${vm.start().format('DD_MM_YYYY_HH_mm_ss')}_to_${vm.end().format('DD_MM_YYYY_HH_mm_ss')}.csv`, 'text/csv')
+                    },
+                    downloadConSubids: (country) => {
+                        Promise.resolve(jQuery.ajax({
+                            method: 'POST', 
+                            url: '/api/getCountrySubids',
+                            dataType: 'json',
+                            data: JSON.stringify({ start: vm.start(), end: vm.end(), camp: x.name, country }), 
+                            contentType:'application/json', 
+                        })).then(data => {
+                            let csv = Papa.unparse(data)
+                            download(csv, `${vm.title().toLowerCase()}_${x.name}_${country}_subids_report_${vm.start().format('DD_MM_YYYY_HH_mm_ss')}_to_${vm.end().format('DD_MM_YYYY_HH_mm_ss')}.csv`, 'text/csv')
+                        }).catch(err => {
+                            vm.error(`ERROR: ${err.status} | ${err.statusText}\r\n${err.responseText}\r\n\r\nplease, reload page`)
+                            $('#standalone').popup('show')
+                        })
                     }
                 })
             }

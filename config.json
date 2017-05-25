@@ -1,5 +1,7 @@
 {
     "port": 4444,
+    "name": "LolKek",
+    "index": "stata-*",
     "es": {
         "host": "",
         "httpAuth": ""
@@ -9,7 +11,12 @@
         "login": "admin",
         "pass": "secret, hehehehe",
         "camps": [
-            "camp"
+            {
+                "name": "lol",
+                "links": [ 
+                    { "id": 3, "camp": 457 }
+                ]
+            }
         ]
       }
     ]

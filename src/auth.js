@@ -9,6 +9,7 @@ module.exports = (req, res, done) => {
 
   if (!credentials || !logins.find(x => x.login === credentials.name && x.pass === credentials.pass)) {
     res.statusCode = 401
+    res.setHeader('Content-Type', 'text/html')
     res.setHeader('WWW-Authenticate', 'Basic realm="all-access"')
     res.end('<center>401 | Access denied</center>')
     done()
